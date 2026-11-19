@@ -481,7 +481,7 @@ lotes_ruta <- lotes_ruta[!is.na(lotes_ruta$lote) & nzchar(lotes_ruta$lote) &
                            is.finite(lotes_ruta$lat) & is.finite(lotes_ruta$lon), ]
 lotes_json <- jsonlite::toJSON(lotes_ruta, dataframe = 'rows', auto_unbox = TRUE)
 
-panel_ruta <- paste0(
+panel_ruta1 <- paste0(
   '<div id="buscador-lotes" style="background:white;padding:12px;border-radius:8px;',
   'box-shadow:0 2px 12px #0004;min-width:230px;max-width:280px;font-family:Arial">',
   '<div style="font-weight:bold;color:#003C8F;margin-bottom:7px">BUSCAR Y NAVEGAR AL LOTE</div>',
@@ -495,6 +495,89 @@ panel_ruta <- paste0(
   'background:#eee;border:1px solid #ccc;padding:7px;border-radius:5px;cursor:pointer">Limpiar ruta</button>',
   '<div id="mensaje-ruta" role="status" style="margin-top:7px;font-size:11px;color:#333;',
   'white-space:normal;line-height:1.35"></div></div>'
+)
+
+panel_ruta <- paste0(
+  '<div id="buscador-lotes" 
+    style="font-family:Arial;">',
+  
+  '<details style="background:white;
+    border-radius:6px;
+    box-shadow:0 2px 10px #0004;
+    overflow:hidden;">',
+  
+  # BOTON PARA DESPLEGAR Y MINIMIZAR
+  '<summary style="
+    background:#0057B8;
+    color:white;
+    padding:10px 14px;
+    font-size:13px;
+    font-weight:bold;
+    cursor:pointer;
+    user-select:none;">
+    &#128269; Buscar lote
+  </summary>',
+  
+  # CONTENIDO DEL BUSCADOR
+  '<div style="
+    background:white;
+    padding:12px;
+    width:260px;
+    max-width:70vw;">',
+  
+  '<div style="
+    font-weight:bold;
+    color:#003C8F;
+    margin-bottom:7px;">
+    BUSCAR Y NAVEGAR AL LOTE
+  </div>',
+  
+  '<input id="entrada-lote" 
+    list="lista-lotes" 
+    placeholder="Escriba el lote"
+    style="box-sizing:border-box;
+    width:100%;
+    padding:8px;
+    border:1px solid #bbb;
+    border-radius:5px;">',
+  
+  '<datalist id="lista-lotes"></datalist>',
+  
+  '<button id="boton-ir-lote" type="button"
+    style="width:100%;
+    margin-top:8px;
+    background:#0057B8;
+    color:white;
+    border:0;
+    padding:9px;
+    border-radius:5px;
+    cursor:pointer;
+    font-weight:bold;">
+    Ir al lote
+  </button>',
+  
+  '<button id="boton-limpiar-ruta" type="button"
+    style="width:100%;
+    margin-top:5px;
+    background:#eee;
+    border:1px solid #ccc;
+    padding:7px;
+    border-radius:5px;
+    cursor:pointer;">
+    Limpiar ruta
+  </button>',
+  
+  '<div id="mensaje-ruta" role="status"
+    style="margin-top:7px;
+    font-size:11px;
+    color:#333;
+    white-space:normal;
+    line-height:1.35;">
+  </div>',
+  
+  '</div>',
+  '</details>',
+  '</div>'
 )
 
 mapa <- mapa %>%
@@ -563,5 +646,25 @@ function(el,x){
 
 archivo_html <- 'Visor.html'
 htmlwidgets::saveWidget(mapa, archivo_html, selfcontained = FALSE, title = 'Visor')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
