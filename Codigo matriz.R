@@ -1,7 +1,7 @@
 
 
 
-
+library(base64enc)
 library(sf)
 library(leaflet)
 library(htmlwidgets)
@@ -41,9 +41,9 @@ perimetro_web <- st_transform(perimetro_utm,4326)
 puntos_web <- st_transform(puntos_utm,4326)
 
 
-lotes_web <- lotes_web[,c("Lote","Area","Perimetro", "Ventas", attr(lotes_web, "sf_column"))]
 
 
+lotes_web <- lotes_web[, c("Lote", "Area", "Perimetro","Ventas", "Plano","Mapa_PDF",attr(lotes_web, "sf_column"))]
 
 lotes_web$Lote_texto <-as.character(lotes_web$Lote)
 
@@ -72,14 +72,121 @@ lotes_web$Estado <- ifelse(!is.na(lotes_web$Ventas) &tolower(lotes_web$Ventas) =
 lotes_web$Color <- ifelse(lotes_web$Estado == "VENDIDO","#D62828","#00A651")
 lotes_web$Relleno <- ifelse(lotes_web$Estado == "VENDIDO", "#F5A3A3", "#A8E6BF")
 
-lotes_web$Popup <- paste0(
-  "<div style='font-family:Arial;width:220px;text-align:center;'>",
-  "<div style='background:#0057B8;color:white;padding:12px;font-size:17px;font-weight:bold;'>",
-  htmlEscape(lotes_web$Lote),"</div>","<p><b>Área:</b> ",
-  round(lotes_web$Area, 2), " m²</p>", "<p><b>Perímetro:</b> ",
-  round(lotes_web$Perimetro, 2), " m</p>","<div style='background:",
-  lotes_web$Color,";color:white;padding:9px;border-radius:5px;font-weight:bold;'>",
-  lotes_web$Estado,"</div></div>")
+
+library(htmltools)
+
+# Limpiar enlaces
+lotes_web$Plano <- trimws(as.character(lotes_web$Plano))
+lotes_web$Mapa_PDF <- trimws(as.character(lotes_web$Mapa_PDF))
+
+# Verificar enlaces válidos
+url_valida <- function(x) {
+  !is.na(x) & grepl("^https://", x, ignore.case = TRUE)
+}
+
+# Crear popup individual por lote
+lotes_web$Popup <- vapply(
+  seq_len(nrow(lotes_web)),
+  function(i) {
+    
+    nombre <- htmltools::htmlEscape(
+      as.character(lotes_web$Lote[i])
+    )
+    
+    area <- round(lotes_web$Area[i], 2)
+    perimetro <- round(lotes_web$Perimetro[i], 2)
+    estado <- lotes_web$Estado[i]
+    color <- lotes_web$Color[i]
+    
+    # IMAGEN DEL PLANO PNG
+    imagen_html <- ""
+    
+    if (url_valida(lotes_web$Plano[i])) {
+      
+      url_png <- htmltools::htmlEscape(
+        lotes_web$Plano[i], attribute = TRUE
+      )
+      
+      imagen_html <- paste0(
+        '<div style="margin-top:12px;">',
+        '<div style="font-size:12px;font-weight:bold;',
+        'color:#003C8F;margin-bottom:6px;">',
+        'PLANO DEL LOTE</div>',
+        
+        '<a href="', url_png, '" ',
+        'target="_blank" rel="noopener noreferrer">',
+        
+        '<img src="', url_png, '" ',
+        'loading="lazy" ',
+        'style="width:100%;height:155px;',
+        'object-fit:contain;',
+        'border:1px solid #ddd;',
+        'border-radius:5px;',
+        'background:#f8f9fa;" ',
+        'alt="Plano del lote">',
+        
+        '</a></div>'
+      )
+    }
+    
+    # ENLACE AL PDF EN GOOGLE DRIVE
+    pdf_html <- ""
+    
+    if (url_valida(lotes_web$Mapa_PDF[i])) {
+      
+      url_pdf <- htmltools::htmlEscape(
+        lotes_web$Mapa_PDF[i], attribute = TRUE
+      )
+      
+      pdf_html <- paste0(
+        '<a href="', url_pdf, '" ',
+        'target="_blank" rel="noopener noreferrer" ',
+        'style="display:block;',
+        'margin-top:10px;',
+        'padding:10px;',
+        'background:#0057B8;',
+        'color:white;',
+        'text-decoration:none;',
+        'border-radius:5px;',
+        'font-size:12px;',
+        'font-weight:bold;">',
+        '&#128196; Ver PDF - ', nombre,
+        '</a>'
+      )
+    }
+    
+    # CONSTRUIR POPUP
+    paste0(
+      '<div style="font-family:Arial;',
+      'width:250px;max-width:75vw;',
+      'text-align:center;">',
+      
+      '<div style="background:#0057B8;',
+      'color:white;padding:12px;',
+      'font-size:17px;font-weight:bold;',
+      'border-radius:5px 5px 0 0;">',
+      nombre,
+      '</div>',
+      
+      '<p><b>Área:</b> ', area, ' m²</p>',
+      '<p><b>Perímetro:</b> ', perimetro, ' m</p>',
+      
+      '<div style="background:', color, ';',
+      'color:white;padding:9px;',
+      'border-radius:5px;',
+      'font-weight:bold;">',
+      estado,
+      '</div>',
+      
+      imagen_html,
+      pdf_html,
+      
+      '</div>'
+    )
+  },
+  character(1)
+)
+
 
 # 5. ETIQUETAS DE LOS LOTES
 lotes_web$Etiqueta <- paste0(htmlEscape(lotes_web$Lote),"<br><span style='font-size:9px;'>",lotes_web$Estado,"</span>")
@@ -346,6 +453,13 @@ addPolygons( data =predio_web, group ="Predio Matriz",
 addPolygons( data =
     lotes_web,group ="Lotes",layerId =~paste0("lote_",Lote_texto), 
     color = ~Color, weight =1.5, opacity = 1,fillColor =~Relleno, fillOpacity =0.55, popup = ~Popup,
+    popupOptions = leaflet::popupOptions(
+      maxWidth = 300,
+      minWidth = 250,
+      maxHeight = 430,
+      autoPan = TRUE,
+      keepInView = TRUE
+    ),
     labelOptions = labelOptions(direction = "auto",textsize = "11px",
                                 style = list("font-weight" = "bold","text-align" = "center")),
     highlightOptions = highlightOptions(weight = 3,color = "#FFD700",bringToFront = TRUE),
@@ -630,12 +744,51 @@ function(el,x){
 }
 ', lotes_json))
 
-archivo_html <- 'Visor.html'
-htmlwidgets::saveWidget(mapa, archivo_html, selfcontained = FALSE, title = 'Visor')
 
 
 
 
+# ============================================================
+# AGREGAR LOGO PNG AL VISOR
+# ============================================================
+
+library(base64enc)
+
+archivo_logo <- "C:/Users/USER/Downloads/R para Facebbok/31_Visor inmobiliario Triunfo/PNG/Logo2.png"
+
+logo_base64 <- base64enc::dataURI(
+  file = archivo_logo,
+  mime = "image/png"
+)
+
+mapa <- mapa %>%
+  addControl(
+    html = htmltools::HTML(
+      paste0(
+        '<img src="', logo_base64, '"
+        style="
+          width:150px;
+          max-width:35vw;
+          height:auto;
+          background:transparent;
+          border:none;
+          pointer-events:none;
+        ">'
+      )
+    ),
+    position = "bottomleft",
+    className = "logo-empresa"
+  )
+
+# EXPORTAR VISOR
+archivo_html <- "Visor.html"
+
+htmlwidgets::saveWidget(
+  mapa,
+  archivo_html,
+  selfcontained = FALSE,
+  title = "Visor"
+)
 
 
 
